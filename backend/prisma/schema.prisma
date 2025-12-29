@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ORGANIZER
+  ADMIN
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  COMPLETED
+}
+
+enum TicketStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  REFUNDED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  firstName     String
+  lastName      String
+  phone         String?
+  role          UserRole  @default(USER)
+  avatar        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  organizedEvents Event[]   @relation("EventOrganizer")
+  tickets         Ticket[]
+  
+  @@map("users")
+}
+
+model Event {
+  id              String       @id @default(cuid())
+  title           String
+  description     String
+  category        String
+  location        String
+  venue           String?
+  startDate       DateTime
+  endDate         DateTime
+  status          EventStatus  @default(DRAFT)
+  capacity        Int
+  price           Float
+  currency        String       @default("USD")
+  coverImage      String?
+  images          String[]
+  tags            String[]
+  
+  organizerId     String
+  organizer       User         @relation("EventOrganizer", fields: [organizerId], references: [id])
+  
+  tickets         Ticket[]
+  
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  
+  @@map("events")
+}
+
+model Ticket {
+  id              String        @id @default(cuid())
+  ticketNumber    String        @unique
+  status          TicketStatus  @default(PENDING)
+  quantity        Int           @default(1)
+  totalPrice      Float
+  
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  
+  eventId         String
+  event           Event         @relation(fields: [eventId], references: [id])
+  
+  purchasedAt     DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@map("tickets")
+}
