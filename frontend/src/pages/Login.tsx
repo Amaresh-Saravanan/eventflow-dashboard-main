@@ -1,11 +1,96 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Zap, Mail, Lock, ArrowRight, Github } from "lucide-react";
 import { useState } from "react";
+import { useSignIn, useSignUp, useUser } from "@clerk/clerk-react";
+import { useToast } from "@/components/ui/use-toast";
 
 const Login = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [loading, setLoading] = useState(false);
+  
+  const { signIn, setActive: setActiveSignIn } = useSignIn();
+  const { signUp, setActive: setActiveSignUp } = useSignUp();
+  const { isSignedIn } = useUser();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  // Redirect if already signed in
+  if (isSignedIn) {
+    navigate('/dashboard');
+    return null;
+  }
+
+  const handleGoogleSignIn = () => {
+    signIn?.authenticateWithRedirect({
+      strategy: "oauth_google",
+      redirectUrl: "/dashboard",
+      redirectUrlComplete: "/dashboard",
+    });
+  };
+
+  const handleGithubSignIn = () => {
+    signIn?.authenticateWithRedirect({
+      strategy: "oauth_github",
+      redirectUrl: "/dashboard",
+      redirectUrlComplete: "/dashboard",
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      if (isSignUp) {
+        // Sign Up
+        const [firstName, ...lastNameParts] = fullName.split(' ');
+        const lastName = lastNameParts.join(' ');
+
+        const result = await signUp?.create({
+          emailAddress: email,
+          password: password,
+          firstName: firstName || '',
+          lastName: lastName || '',
+        });
+
+        if (result?.status === "complete") {
+          await setActiveSignUp({ session: result.createdSessionId });
+          navigate('/dashboard');
+          toast({
+            title: "Account created!",
+            description: "Welcome to EventFlow Dashboard",
+          });
+        }
+      } else {
+        // Sign In
+        const result = await signIn?.create({
+          identifier: email,
+          password: password,
+        });
+
+        if (result?.status === "complete") {
+          await setActiveSignIn({ session: result.createdSessionId });
+          navigate('/dashboard');
+          toast({
+            title: "Welcome back!",
+            description: "Successfully signed in",
+          });
+        }
+      }
+    } catch (err: any) {
+      console.error('Auth error:', err);
+      toast({
+        title: "Error",
+        description: err.errors?.[0]?.message || "Authentication failed",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen auth-theme bg-background flex">
@@ -15,39 +100,39 @@ const Login = () => {
           <div className="w-10 h-10 rounded-xl bg-primary-foreground/10 backdrop-blur flex items-center justify-center">
             <Zap className="w-5 h-5 text-primary-foreground" />
           </div>
-          <span className="text-xl font-semibold text-primary-foreground">WebhookHub</span>
+          <span className="text-xl font-semibold text-primary-foreground">EventFlow</span>
         </Link>
 
         <div className="space-y-6">
           <h1 className="text-4xl font-bold text-primary-foreground leading-tight">
-            Webhook infrastructure
+            Event management
             <br />
-            that scales with you
+            made simple
           </h1>
           <p className="text-lg text-primary-foreground/80 max-w-md">
-            Join thousands of developers who trust WebhookHub for reliable, 
-            real-time webhook management.
+            Join thousands of organizers who trust EventFlow for seamless 
+            event management and ticketing.
           </p>
           <div className="flex items-center gap-6 pt-4">
             <div className="text-center">
-              <p className="text-3xl font-bold text-primary-foreground">99.99%</p>
-              <p className="text-sm text-primary-foreground/70">Uptime SLA</p>
+              <p className="text-3xl font-bold text-primary-foreground">10K+</p>
+              <p className="text-sm text-primary-foreground/70">Events hosted</p>
             </div>
             <div className="w-px h-12 bg-primary-foreground/20" />
             <div className="text-center">
-              <p className="text-3xl font-bold text-primary-foreground">1B+</p>
-              <p className="text-sm text-primary-foreground/70">Events delivered</p>
+              <p className="text-3xl font-bold text-primary-foreground">1M+</p>
+              <p className="text-sm text-primary-foreground/70">Tickets sold</p>
             </div>
             <div className="w-px h-12 bg-primary-foreground/20" />
             <div className="text-center">
-              <p className="text-3xl font-bold text-primary-foreground">50ms</p>
-              <p className="text-sm text-primary-foreground/70">Avg latency</p>
+              <p className="text-3xl font-bold text-primary-foreground">99%</p>
+              <p className="text-sm text-primary-foreground/70">Satisfaction</p>
             </div>
           </div>
         </div>
 
         <p className="text-sm text-primary-foreground/60">
-          © 2024 WebhookHub. All rights reserved.
+          © 2024 EventFlow. All rights reserved.
         </p>
       </div>
 
@@ -60,7 +145,7 @@ const Login = () => {
               <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
                 <Zap className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="text-xl font-semibold text-foreground">WebhookHub</span>
+              <span className="text-xl font-semibold text-foreground">EventFlow</span>
             </Link>
           </div>
 
@@ -71,14 +156,18 @@ const Login = () => {
               </h2>
               <p className="text-muted-foreground">
                 {isSignUp
-                  ? "Start your 14-day free trial"
+                  ? "Start managing your events today"
                   : "Sign in to your account to continue"}
               </p>
             </div>
 
             {/* Social login */}
             <div className="space-y-3 mb-6">
-              <button className="w-full h-11 rounded-xl bg-secondary border border-border flex items-center justify-center gap-3 text-sm font-medium hover:bg-secondary/80 transition-colors">
+              <button 
+                onClick={handleGoogleSignIn}
+                disabled={loading}
+                className="w-full h-11 rounded-xl bg-secondary border border-border flex items-center justify-center gap-3 text-sm font-medium hover:bg-secondary/80 transition-colors disabled:opacity-50"
+              >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path
                     fill="currentColor"
@@ -99,7 +188,11 @@ const Login = () => {
                 </svg>
                 Continue with Google
               </button>
-              <button className="w-full h-11 rounded-xl bg-secondary border border-border flex items-center justify-center gap-3 text-sm font-medium hover:bg-secondary/80 transition-colors">
+              <button 
+                onClick={handleGithubSignIn}
+                disabled={loading}
+                className="w-full h-11 rounded-xl bg-secondary border border-border flex items-center justify-center gap-3 text-sm font-medium hover:bg-secondary/80 transition-colors disabled:opacity-50"
+              >
                 <Github className="w-5 h-5" />
                 Continue with GitHub
               </button>
@@ -116,13 +209,16 @@ const Login = () => {
             </div>
 
             {/* Form */}
-            <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+            <form className="space-y-4" onSubmit={handleSubmit}>
               {isSignUp && (
                 <div>
                   <label className="block text-sm font-medium mb-2">Full name</label>
                   <input
                     type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
                     placeholder="John Doe"
+                    required={isSignUp}
                     className="w-full h-11 px-4 rounded-xl bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
@@ -136,6 +232,7 @@ const Login = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
+                    required
                     className="w-full h-11 pl-11 pr-4 rounded-xl bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
@@ -144,9 +241,9 @@ const Login = () => {
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-medium">Password</label>
                   {!isSignUp && (
-                    <a href="#" className="text-sm text-primary hover:underline">
+                    <Link to="/sign-in" className="text-sm text-primary hover:underline">
                       Forgot password?
-                    </a>
+                    </Link>
                   )}
                 </div>
                 <div className="relative">
@@ -156,18 +253,27 @@ const Login = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
+                    required
+                    minLength={8}
                     className="w-full h-11 pl-11 pr-4 rounded-xl bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
               </div>
 
-              <Link
-                to="/dashboard"
-                className="w-full h-11 rounded-xl gradient-primary text-primary-foreground font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full h-11 rounded-xl gradient-primary text-primary-foreground font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
               >
-                {isSignUp ? "Create account" : "Sign in"}
-                <ArrowRight className="w-4 h-4" />
-              </Link>
+                {loading ? (
+                  <span>Processing...</span>
+                ) : (
+                  <>
+                    {isSignUp ? "Create account" : "Sign in"}
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
             </form>
 
             <p className="text-center text-sm text-muted-foreground mt-6">

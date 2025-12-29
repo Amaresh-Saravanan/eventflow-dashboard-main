@@ -6,14 +6,14 @@ import {
   updateEvent,
   deleteEvent,
 } from '../controllers/eventController';
-import { protect, restrictTo } from '../middleware/authMiddleware';
+import { verifyClerkToken } from '../middleware/clerkMiddleware';
 
 const router = express.Router();
 
-router.get('/', getEvents);
-router.get('/:id', getEventById);
-router.post('/', protect, restrictTo('ORGANIZER', 'ADMIN'), createEvent);
-router.put('/:id', protect, updateEvent);
-router.delete('/:id', protect, deleteEvent);
+router.get('/', verifyClerkToken, getEvents);
+router.get('/:id', verifyClerkToken, getEventById);
+router.post('/', verifyClerkToken, createEvent);
+router.put('/:id', verifyClerkToken, updateEvent);
+router.delete('/:id', verifyClerkToken, deleteEvent);
 
 export default router;

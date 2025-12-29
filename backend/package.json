@@ -21,6 +21,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@clerk/clerk-sdk-node": "^4.13.23",
     "@prisma/client": "^6.19.1",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
