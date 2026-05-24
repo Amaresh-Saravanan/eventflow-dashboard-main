@@ -53,7 +53,7 @@ Backend runs on: http://localhost:5000
 ## License
 
 MIT
-EOF
+
 
 # ==========================================
 # Step 11: Create Docker Compose (Optional)
